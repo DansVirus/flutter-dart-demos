@@ -1,64 +1,80 @@
-#🧠 What are Isolates?
+# Isolates in Dart and Flutter
 
-In Dart (and therefore Flutter), isolates are independent threads of execution that do not share memory.
+---
+
+## 1. What Are Isolates
+
+In **Dart** (and therefore **Flutter**), isolates are independent threads of execution that **do not share memory**.
 
 Each isolate has its own:
 
-Memory heap (no shared objects between isolates).
+- Memory heap (no shared objects between isolates)
+- Event loop and microtask queue
+- Copy of the Dart runtime
 
-Event loop and microtask queue.
+> Isolates provide **true concurrency**, unlike `async`/`await` or `Future`, which only enable cooperative multitasking within a single isolate.
 
-Copy of the Dart runtime.
+---
 
+## 2. Default Isolate in a Flutter App
 
-
-Isolates are true concurrency, unlike async/await or Futures, which only provide cooperative multitasking within a single isolate.
-
-
-#🧠How many isolates does a Flutter app run?
-
-When a Flutter application runs, by default there is one primary isolate, the UI isolate aka the main isolate.
-
+When a Flutter application runs, by default there is one primary isolate:  
+the **UI isolate**, also known as the **main isolate**.
 
 This isolate:
 
-Executes your app’s Dart code.
+- Executes the app’s Dart code
+- Manages the build tree, widgets, state, and UI updates
+- Communicates with the native layer (Android/iOS) through **platform channels**
 
-Manages  the build tree, widgets, state, and UI updates.
+> In essence, the entire Flutter application operates within a single isolate — unless additional ones are explicitly created.
 
-Communicates with the native layer(i.e. Android or iOS) via platform channels.
+---
 
+## 3. When to Use Isolates
 
-In other words, your entire application operates within a single isolate... unless you explicitly request otherwise!
+Isolates are useful for **CPU-bound** tasks that risk blocking animation frames or the UI thread.
 
-#🧠When to use isolates?
+Typical use cases include:
 
-When a task is CPU-bound and risks blocking animation frames. 
-      
-Use an isolate for  Image decoding/processing.
+- Image decoding or processing
+- Large JSON or XML parsing
+- Compression or decompression
+- Cryptography
+- Offline machine learning inference
+- Background task handlers (e.g., callbacks for alarms, notifications, or `workmanager` jobs)
 
-Large JSON/XML parsing.
+---
 
-Compression.
+## 4. Communication Between Isolates
 
-Cryptography.
+Since isolates do not share memory, they cannot directly access or modify each other's variables, objects, or state.  
+Instead, they communicate via **message passing** using **ports**.
 
-Offline ML inference.
+### 4.1 Key Concepts
 
-Background task handlers, usually from plugins. (callbacks for alarms, notifications, workmanager, etc)
+- **ReceivePort** — Listens for incoming messages in an isolate.
+- **SendPort** — A handle that can be passed to another isolate to send messages back.
 
-#🧠 How Isolates communicate?
+Messages are **copied** (serialized and deserialized), not shared, ensuring thread safety but introducing some serialization overhead.
 
-Isolates do not share memory. Because of that, they can’t directly access or mutate each other’s variables, objects, or instances. 
+> Dart’s isolate model is inspired by the **Actor Model**, as used in systems like Erlang and Akka.
 
-They talk to each other by sending messages through ports.
+---
 
-Dart isolates use a message-passing system similar to the actor model (like Erlang or Akka).
+## 5. Summary
 
-A ReceivePort listens for incoming messages in an isolate.
+| Concept | Description |
+|----------|--------------|
+| **Isolation** | Each isolate has a separate memory heap; no shared objects |
+| **Communication** | Message passing via `SendPort` and `ReceivePort` |
+| **Concurrency Type** | True parallelism (not cooperative multitasking) |
+| **Default Behavior** | Flutter runs a single UI isolate by default |
+| **Typical Use Cases** | CPU-intensive operations such as image processing, JSON parsing, or cryptography |
 
-A SendPort is a handle you can pass to another isolate so it can send messages back.
+---
 
-Messages are copied (serialized/deserialized), not shared.
+## 6. References
 
-This ensures thread-safety, at the cost of some serialization overhead.
+- [Dart Language: Concurrency and Isolates](https://dart.dev/guides/language/concurrency)
+- [Flutter Performance Best Practices](https://docs.flutter.dev/perf/render-performance)
