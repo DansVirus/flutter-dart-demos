@@ -1,0 +1,20 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  language:
+    strict-inference: true
+    strict-raw-types: true
+  errors:
+    deprecated_member_use: error
+    dead_code: warning
+    unused_import: warning
+
+linter:
+  rules:
+    - always_use_package_imports
+    - prefer_final_locals
+    - avoid_print
+    - use_key_in_widget_constructors
+    - prefer_const_constructors
+    - prefer_const_literals_to_create_immutables
+    - avoid_redundant_argument_values
