@@ -2,7 +2,16 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'; // compute
 
-// Σκόπιμα αργός Fibonacci (CPU-bound)
+/// Why this is CPU-heavy for n = 40:
+/// - This naive recursion recomputes the same subproblems many times
+///   (it has exponential time complexity ~ O(phi^n), where phi ≈ 1.618).
+/// - For n = 40, the call tree explodes into millions of recursive calls.
+/// - That level of CPU work will *block* the UI if done on the main isolate,
+///   causing visible jank or a frozen animation.
+/// - Running it via `compute(...)` offloads the work to a worker isolate so the
+///   UI isolate stays responsive.
+
+// Fibonacci (CPU-bound)
 int slowFib(int n) {
   if (n <= 1) return n;
   return slowFib(n - 1) + slowFib(n - 2);
@@ -60,7 +69,7 @@ class IsolatesVisualDemo extends StatelessWidget {
   }
 }
 
-/// Panel 1: Τρέχει slowFib στο main isolate -> το animation θα κολλάει όσο διαρκεί ο υπολογισμός.
+/// Panel 1: Run slowFib on main isolate -> animation will stutter/freeze while computes.
 class _BlockingPanel extends StatefulWidget {
   const _BlockingPanel({super.key});
 
@@ -89,10 +98,10 @@ class _BlockingPanelState extends State<_BlockingPanel>
     super.dispose();
   }
 
+  // Intentionally runs the heavy computation on the UI isolate to demonstrate blocking.
   void _runBlocking() {
     setState(() => busy = true);
-    // ΣΚΟΠΙΜΑ στο main isolate: θα παγώσει το UI κι αυτό το animation.
-    final r = slowFib(40); // προσαρμόστε (30–42) ανάλογα με τη συσκευή
+    final r = slowFib(40);
     setState(() {
       result = r;
       busy = false;
@@ -113,7 +122,7 @@ class _BlockingPanelState extends State<_BlockingPanel>
             const SizedBox(height: 8),
             _Spinner(controller: _ac),
             const SizedBox(height: 12),
-            if (busy) const Text('Υπολογισμός στο main isolate... το UI θα κολλήσει'),
+            if (busy) const Text('Computing on UI isolate... the UI freeze.'),
             if (!busy && result != null) Text('fib(40) = $result'),
             const SizedBox(height: 12),
             FilledButton(
@@ -122,8 +131,8 @@ class _BlockingPanelState extends State<_BlockingPanel>
             ),
             const SizedBox(height: 8),
             const Text(
-              'Εδώ ο υπολογισμός τρέχει στο ίδιο thread με το UI, '
-                  'οπότε το animation θα “παγώσει” μέχρι να τελειώσει.',
+              'This computation runs on the same thread as the UI, '
+                  'so the animation will pause until it completes.',
               textAlign: TextAlign.center,
             ),
           ],
@@ -133,7 +142,15 @@ class _BlockingPanelState extends State<_BlockingPanel>
   }
 }
 
-/// Panel 2: Τρέχει slowFib σε worker isolate με compute -> το animation μένει ομαλό.
+/// Panel 2: Runs `slowFib` on a worker isolate via `compute(...)` → the animation remains smooth.
+///
+/// Why `compute`:
+/// - Spawns a temporary isolate, executes the callback with the provided input,
+///   and returns the result back to the main isolate.
+/// - Keeps the UI thread free to render frames.
+///
+/// Modern alternative:
+/// - `await Isolate.run(() => slowFib(40));` offers a clean API for one-off tasks.
 class _ComputePanel extends StatefulWidget {
   const _ComputePanel({super.key});
 
@@ -162,10 +179,10 @@ class _ComputePanelState extends State<_ComputePanel>
     super.dispose();
   }
 
+  /// Offloads the heavy computation to a worker isolate using `compute`.
   Future<void> _runWithCompute() async {
     setState(() => busy = true);
-    // Με isolate: UI παραμένει responsive.
-    final r = await compute(slowFib, 40); // προσαρμόστε (30–42) ανάλογα με τη συσκευή
+    final r = await compute(slowFib, 40);
     if (!mounted) return;
     setState(() {
       result = r;
@@ -187,7 +204,7 @@ class _ComputePanelState extends State<_ComputePanel>
             const SizedBox(height: 8),
             _Spinner(controller: _ac),
             const SizedBox(height: 12),
-            if (busy) const Text('Υπολογισμός σε worker isolate... UI παραμένει ομαλό'),
+            if (busy) const Text('Computing on a worker isolate... the UI stays responsive.'),
             if (!busy && result != null) Text('fib(40) = $result'),
             const SizedBox(height: 12),
             FilledButton(
@@ -196,7 +213,7 @@ class _ComputePanelState extends State<_ComputePanel>
             ),
             const SizedBox(height: 8),
             const Text(
-              'Ο υπολογισμός τρέχει σε ξεχωριστό isolate. Το animation συνεχίζει κανονικά.',
+              'The computation runs on a separate isolate so the animation continues smoothly.',
               textAlign: TextAlign.center,
             ),
           ],
@@ -206,7 +223,7 @@ class _ComputePanelState extends State<_ComputePanel>
   }
 }
 
-/// Ένα απλό “οπτικό” τεστ: περιστρεφόμενο τετράγωνο που θα φανεί αν σπάει/παγώνει.
+/// A simple visual indicator (rotating square) that makes UI jank obvious if the UI thread is blocked.
 class _Spinner extends StatelessWidget {
   final AnimationController controller;
   const _Spinner({required this.controller});
