@@ -9,13 +9,13 @@ Curated, runnable examples for Flutter and Dart. Each folder is self-contained a
 
 ### Dart
 ```bash
-cd examples/dart/isolates
-dart run isolates.dart
+cd examples/dart/flutter
+dart run flutter.dart
 ```
 
 ### Flutter
 ```bash
-cd examples/flutter/isolates
+cd examples/flutter/flutter
 flutter pub get
 flutter run
 ```
